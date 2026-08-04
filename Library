@@ -14,21 +14,7 @@ local Player = Players.LocalPlayer
 local PlayerGui = Player:WaitForChild("PlayerGui")
 local Mouse = Player:GetMouse()
 
-local URL = "https://github.com/tomdagoat-bot/GerpUI/raw/refs/heads/main/GerpUI.rbxm"
-local FileName = "GerpUI.rbxm"
 
-if not isfile(FileName) then
-    local data = game:HttpGet(URL)
-    writefile(FileName, data)
-end
-
-local Object = game:GetObjects(getcustomasset(FileName))
-
-if Object and #Object > 1 then
-    for _, Obj in Object do
-        Obj.Parent = ReplicatedStorage
-    end
-end
 
 local Inputs = {}
 local Assets = ReplicatedStorage:WaitForChild("Assets")
