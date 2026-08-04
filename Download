@@ -13,7 +13,7 @@ Gui.Parent = ReplicatedStorage
 local URL_Assets = "https://github.com/tomdagoat-bot/GerpUI/raw/refs/heads/main/Assets.rbxm"
 
 if not isfile("Assets.rbxm") then
-    local data = game:HttpGet(URL_UI)
+    local data = game:HttpGet(URL_Assets)
     writefile("Assets.rbxm", data)
 end
 
