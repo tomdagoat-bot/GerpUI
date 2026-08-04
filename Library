@@ -1,0 +1,802 @@
+-- OOP Based UI Library For Skids
+-- thelastlarp2017: YOU.. YOU USED OOP
+-- 3 like for part 2
+
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local TweenService = game:GetService("TweenService")
+local UserInputService = game:GetService("UserInputService")
+local RunService = game:GetService("RunService")
+local SoundService = game:GetService("SoundService")
+local Debris = game:GetService("Debris")
+
+local Player = Players.LocalPlayer
+local PlayerGui = Player:WaitForChild("PlayerGui")
+local Mouse = Player:GetMouse()
+
+local URL = "https://github.com/tomdagoat-bot/GerpUI/raw/refs/heads/main/GerpUI.rbxm"
+local FileName = "GerpUI.rbxm"
+
+if not isfile(FileName) then
+    local data = game:HttpGet(URL)
+    writefile(FileName, data)
+end
+
+local Object = game:GetObjects(getcustomasset(FileName))
+
+if Object and #Object > 1 then
+    for _, Obj in Object do
+        Obj.Parent = ReplicatedStorage
+    end
+end
+
+local Inputs = {}
+local Assets = ReplicatedStorage:WaitForChild("Assets")
+
+--[[ Executor Only Function
+	Doing This Incase The Executor Doesnt Support These Functions
+]]
+
+if not gethui then
+	-- returns a copy of coregui
+	gethui = function()
+		return PlayerGui
+	end
+end
+if not getgenv then
+	-- returns the executor's global enviroment
+	getgenv = function()
+		return _G
+	end
+end
+
+--[[ End Of Executor Functions ]]
+
+local PropertiesCACH = {}
+
+local function HasProperty(Object: Instance, Property: string): boolean
+	local Class = Object.ClassName
+	local ClassCache = PropertiesCACH[Class]
+	
+	if not ClassCache then
+		ClassCache = {}
+		PropertiesCACH[Class] = ClassCache
+	end
+
+	local Cached = ClassCache[Property]
+	if Cached ~= nil then
+		return Cached
+	end
+
+	local Success = pcall(function()
+		local _ = Object[Property]
+	end)
+	ClassCache[Property] = Success
+	return Success
+end
+
+local function Rebuild(Original, Changes)
+	local Result : typeof(Original) = {}
+	
+	for Key, Value in Original do
+		Result[Key] = Value
+	end
+	if Changes then
+		for Key, Value in Changes do
+			Result[Key] = Value
+		end
+	end
+	
+	return Result
+end
+
+local TweenInfos = {
+	["Sway"] = TweenInfo.new(0.8, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
+	["Linear"] = TweenInfo.new(0.6, Enum.EasingStyle.Linear, Enum.EasingDirection.In),
+	["ComeIn"] = TweenInfo.new(0.7, Enum.EasingStyle.Sine, Enum.EasingDirection.Out),
+	["Pop"] = TweenInfo.new(0.25, Enum.EasingStyle.Back, Enum.EasingDirection.Out),
+	["Pop?"] = TweenInfo.new(0.35, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
+	["Linear2"] = TweenInfo.new(0.3, Enum.EasingStyle.Linear, Enum.EasingDirection.In),
+}
+
+local function Tween(
+	info: {
+		Properties: string | {},
+		GuiObject: GuiObject | Instance,
+		Tweening: string,
+		Goal: any,
+		OnEnd: () -> (),
+	}
+): Tween
+	if typeof(info.Properties) == "string" then
+		info.Properties = {[info.Properties] = info.Goal}
+	end
+
+	local TI
+	if typeof(info.Tweening) == "string" then
+		TI = TweenInfos[info.Tweening] or TweenInfos.Linear
+	elseif info.Tweening then
+		TI = info.Tweening
+	else
+		TI = TweenInfos.Linear
+	end
+
+	local Result = TweenService:Create(info.GuiObject, TI, info.Properties)
+	Result:Play()
+	if info.OnEnd then
+		Result.Completed:Once(info.OnEnd)
+	end
+	return Result
+end
+
+local MainProperties = {"BackgroundTransparency", "TextTransparency", "TextStrokeTransparency", "ImageTransparency"}
+
+local function Window_UIObject(Frame, CustomTheme)
+	if Frame.Name == "Bar" then
+		Frame.BackgroundColor3 = CustomTheme["Bar"]
+		Frame.BackgroundTransparency = CustomTheme["Bar Transparency"]
+	elseif Frame.Name == "Fill" then
+		Frame.BackgroundColor3 = CustomTheme["Light Color"]
+		Frame.BackgroundTransparency = CustomTheme["Fill Transparency"]
+	elseif Frame.Name == "Toggle" and Frame:IsA("TextButton") then
+		Frame.BackgroundColor3 = Frame:HasTag("Enabled") and CustomTheme["Toggled"] or CustomTheme["Not Toggled"]
+	end
+
+	if Frame:GetAttribute("Main-UI") or Frame:GetAttribute("Secondary-UI") or Frame:GetAttribute("Tertiary-UI") then
+		Frame.BackgroundColor3 = Frame:GetAttribute("Main-UI") and CustomTheme["Main Background"]
+			or Frame:GetAttribute("Secondary-UI") and CustomTheme["Secondary"]
+			or CustomTheme["Tertiary"]
+		Frame.BackgroundTransparency = Frame:GetAttribute("Main-UI") and CustomTheme["Background Transparency"]
+			or Frame:GetAttribute("Secondary-UI") and CustomTheme["Secondary Transparency"]
+			or CustomTheme["Tertiary Transparency"]
+	end
+
+	for _, Prop in MainProperties do
+		if HasProperty(Frame, Prop) then
+			Frame:SetAttribute(Prop, Frame[Prop])
+		end
+	end
+
+	if HasProperty(Frame, "Image") and Frame.Name == "Icon" then
+		Frame.ImageColor3 = CustomTheme["Icon Color"]
+		Frame.ImageTransparency = CustomTheme["Icon Transparency"]
+	end
+end
+
+local function Window_TextObject(TextLabel, CustomTheme, Font)
+	TextLabel.FontFace = Font
+	TextLabel.TextColor3 = TextLabel:GetAttribute("Secondary-Text") and CustomTheme["Secondary Text Color"] or CustomTheme["Main Text Color"]
+	TextLabel.TextTransparency = TextLabel:GetAttribute("Secondary-Text") and CustomTheme["Secondary Text Transparency"] or CustomTheme["Main Text Transparency"]
+end
+
+local function HideSystem(UiObj)
+	local Properties = {BackgroundTransparency = 1}
+	if HasProperty(UiObj, "Text") then
+		Properties["TextTransparency"] = 1
+		Properties["TextStrokeTransparency"] = 1
+	elseif HasProperty(UiObj, "Image") then
+		Properties["ImageTransparency"] = 1
+	end
+	Tween({
+		GuiObject = UiObj,
+		Tweening = "Linear",
+		Properties = Properties,
+		OnEnd = function()
+			UiObj.Visible = false
+		end,
+	})
+end
+
+local function ShowSystem(UiObj)
+	if not UiObj:HasTag("NoVisible") then
+		UiObj.Visible = true
+	end
+	local Properties = {}
+	for Prop, Val in UiObj:GetAttributes() do
+		if HasProperty(UiObj, Prop) then
+			Properties[Prop] = Val
+		end
+	end
+	Tween({GuiObject = UiObj, Tweening = "Linear", Properties = Properties})
+end
+
+local function Hide(Obj, ApplyToObj)
+	for _, UiObj in Obj:QueryDescendants("GuiObject") do
+		HideSystem(UiObj)
+	end
+	if ApplyToObj then
+		HideSystem(Obj)
+	end
+end
+
+local function Show(Obj, ApplyToObj)
+	for _, UiObj in Obj:QueryDescendants("GuiObject") do
+		ShowSystem(UiObj)
+	end
+	if ApplyToObj then
+		ShowSystem(Obj)
+	end
+end
+
+local GerpUI = {}
+local WINDOW_METATABLE = {}
+WINDOW_METATABLE.__index = WINDOW_METATABLE
+
+local ThemeTemplate = {
+	["Main Background"] = Color3.fromRGB(13, 13, 13),
+	["Background Transparency"] = 0.1,
+	["Secondary"] = Color3.fromRGB(70, 70, 70),
+	["Secondary Transparency"] = 0.8,
+	["Main Text Color"] = Color3.new(1, 1, 1),
+	["Main Text Transparency"] = 0,
+	["Secondary Text Color"] = Color3.new(1, 1, 1),
+	["Secondary Text Transparency"] = 0.3,
+	["Icon Color"] = Color3.new(1, 1, 1),
+	["Icon Transparency"] = 0,
+	["Light Color"] = Color3.fromRGB(75, 171, 255), -- also fill color :3
+	["Tertiary"] = Color3.fromRGB(90, 90, 90),
+	["Tertiary Transparency"] = 0.8,
+	["Bar"] = Color3.new(1, 1, 1),
+	["Bar Transparency"] = 0.7,
+	["Fill Transparency"] = 0,
+	["Toggled"] = Color3.new(0,1,0),
+	["Not Toggled"] = Color3.new(1,0,0),
+}
+
+local DefaultTheme = Rebuild(ThemeTemplate)
+
+local Window_Information = {
+	["Name"] = "Gerp UI",
+	["Credit"] = "Made By Gerp",
+	["Icon"] = "rbxassetid://132975398557010",
+	["Font"] = Font.fromId(12187375716),
+	["Loading Screen"] = true,
+	["Welcome Message"] = "Welcome To Gerp Hub, A Script Made By Gerp.",
+	["Welcome Description"] = "A Powerful Universal Exploiting Hub For Skill Issues.",
+	["Loading Duration"] = {3, 5},
+	["Author"] = "Gerp",
+	["Transparent"] = false,
+	["Transparency"] = 0.1,
+	["Background Image"] = "rbxassetid://1078423085",
+	["Empty Tab Image"] = "rbxassetid://99740752463688",
+	["Background Transparency"] = 0.5,
+	["Version"] = "v1.0.0",
+	["Display Version"] = true,
+	["Use Background Image"] = false,
+	["Theme"] = "Default",
+	["Draggable"] = true,
+}
+
+local Tab_Information = {
+	["Name"] = "Gerp Tab",
+	["Icon"] = "rbxassetid://11322089611",
+	["Icon Size"] = UDim2.fromOffset(17,17),
+	["Show Icon"] = true,
+	["Enabled"] = false,
+}
+
+local Section_Information = {
+	["Name"] = "Custom Section",
+	["Description"] = "This Section Is Custom, Isnt That Tuff",
+	["Padding"] = UDim.new(0,8)
+}
+
+local Button_Information = {
+	["Name"] = "Custom Button",
+	["Icon"] = "rbxassetid://11322089611",
+	["Icon Size"] = UDim2.fromOffset(25,25),
+	["Show Icon"] = true,
+	["CallBack"] = function()
+		print("Clicked!")
+	end,
+}
+
+local Toggle_Information = {
+	["Name"] = "Custom Toggle",
+	["Enabled"] = false,
+	["Type"] = "Toggle", -- Toggle | Checkbox
+	["Icon"] = "rbxassetid://11322089611",
+	["Icon Size"] = UDim2.fromOffset(25,25),
+	["Show Icon"] = true,
+	["CallBack"] = function(Value)
+		print("Custom Toggle:",Value and "Enabled" or "Disabled")
+	end,
+}
+
+GerpUI.Themes = {}
+GerpUI.NewTheme = function(info, Name)
+	local T = Rebuild(ThemeTemplate, info)
+	GerpUI.Themes[Name] = T
+	return T
+end
+
+local RNG = Random.new()
+
+function GerpUI:Window(info)
+	local UIInstance = ReplicatedStorage:WaitForChild("UI"):Clone()
+	UIInstance.Parent = gethui()
+
+	local self = setmetatable({}, WINDOW_METATABLE)
+	self.Tabs = {}
+	self.Instance = UIInstance
+	self.UI = UIInstance.Hub
+	self.Buttons = self.UI:WaitForChild("Buttons")
+	self.Comm = self.UI:WaitForChild("Communicate")
+	self.Contents = self.UI:WaitForChild("Content")
+	self.TabsUI = self.UI:WaitForChild("Tabs")
+	self.BackgroundImage = self.UI:WaitForChild("Background")
+	self.Icon = self.UI:WaitForChild("Icon")
+	self.Title = self.UI:WaitForChild("Name")
+	self.Credits = self.UI:WaitForChild("Credit")
+	self.Version = self.UI:WaitForChild("Version")
+	self.Welcome = self.Comm:WaitForChild("Executed")
+	self.Empty = self.Comm:WaitForChild("Empty")
+
+	local WindowInfo = Rebuild(Window_Information, info)
+	self.Window_Info = WindowInfo
+	self.Empty.e.Image = WindowInfo["Empty Tab Image"]
+
+	--[[ Theme ]]
+	self:SetTheme(WindowInfo["Theme"])
+
+	--[[ Loading Screen ]]--
+	self.UI.ClipsDescendants = true
+	self.Welcome.Welcome.Text = WindowInfo["Welcome Message"]
+	self.Welcome.Description.Text = WindowInfo["Welcome Description"]
+	self.Welcome.Icon.Image = WindowInfo["Icon"]
+	self.UI.Position = self.UI:GetAttribute("StartPos")
+	self.UI.Size = self.UI:GetAttribute("Size")
+	self.UI.Background.Visible = WindowInfo["Use Background Image"]
+	self.UI.Background.ImageTransparency = 1
+	self.Contents.Size = self.Contents:GetAttribute("startSize")
+
+	for _, UiObj in self.UI:GetChildren() do
+		if UiObj:IsA("GuiObject") and UiObj:GetAttribute("StartPos") then
+			UiObj.Position = UiObj:GetAttribute("StartPos")
+		end
+	end
+
+	Hide(self.Empty)
+
+	task.spawn(function()
+		self:Intro()
+	end)
+
+	--[[ The Custom Stuff ]]
+	self.Icon.Image = WindowInfo["Icon"]
+	self.Title.Text = WindowInfo["Name"]
+	self.Version.Text = WindowInfo["Version"]
+	self.Credits.Text = WindowInfo["Credit"]
+	self.Version.Visible = WindowInfo["Display Version"]
+
+	if WindowInfo.Transparent then
+		self.UI.BackgroundTransparency = WindowInfo["Transparency"]
+		self.Buttons.BackgroundTransparency = WindowInfo["Transparency"]
+	else
+		self.UI.BackgroundTransparency = 0
+		self.Buttons.BackgroundTransparency = 0
+	end
+
+	self.UI.DescendantAdded:Connect(function(UIObj)
+		if not UIObj:IsA("GuiObject") then
+			return
+		end
+		Window_UIObject(UIObj, self.Theme)
+		if HasProperty(UIObj, "Text") then
+			Window_TextObject(UIObj, self.Theme, self.Window_Info.Font)
+		end
+	end)
+
+	return self
+end
+
+function WINDOW_METATABLE:Intro()
+	local UI = self.UI
+	local WindowInfo = self.Window_Info
+
+	Tween({GuiObject = UI, Tweening = "Sway", Properties = "Position", Goal = UI:GetAttribute("Position")}).Completed:Wait()
+	task.wait(1)
+
+	local LoadingDuration = typeof(WindowInfo["Loading Duration"]) == "number"
+		and WindowInfo["Loading Duration"]
+		or RNG:NextNumber(WindowInfo["Loading Duration"][1], WindowInfo["Loading Duration"][2])
+
+	if WindowInfo["Loading Screen"] then
+		self.Comm.Visible = true
+		self.Welcome.Icon.Image = WindowInfo["Icon"]
+
+		Tween({GuiObject = self.Comm, Tweening = "Sway", Properties = "Position", Goal = self.Comm:GetAttribute("secondpos")}).Completed:Wait()
+		Tween({GuiObject = UI:WaitForChild("Shadow"), Properties = "Transparency", Goal = UI.Shadow:GetAttribute("Transparency"), Tweening = "Linear"})
+		task.wait(0.5)
+
+		Tween({
+			GuiObject = self.Welcome.Bar.Fill,
+			Tweening = TweenInfo.new(LoadingDuration, Enum.EasingStyle.Sine, Enum.EasingDirection.In),
+			Properties = "Size",
+			Goal = UDim2.fromScale(1, 1),
+		}).Completed:Wait()
+
+		Hide(self.Welcome)
+		task.wait(TweenInfos.Linear.Time)
+		self.Welcome:Destroy()
+		self.Welcome = nil
+	else
+		self.Welcome:Destroy()
+		self.Welcome = nil
+		Tween({GuiObject = UI:WaitForChild("Shadow"), Properties = "Transparency", Goal = UI.Shadow:GetAttribute("Transparency"), Tweening = "Linear"})
+	end
+
+	Tween({GuiObject = UI, Tweening = "Sway", Properties = "Size", Goal = UI:GetAttribute("finalsize")}).Completed:Wait()
+
+	if WindowInfo["Use Background Image"] then
+		UI.Background.Image = WindowInfo["Background Image"]
+		Tween({GuiObject = UI:WaitForChild("Background"), Properties = "ImageTransparency", Goal = WindowInfo["Background Transparency"], Tweening = "Linear"})
+	end
+
+	local LastComeIn
+	for _, UiObj in UI:GetChildren() do
+		if not UiObj:IsA("GuiObject") then
+			continue
+		end
+		local Properties = {Position = UiObj:GetAttribute("Position")}
+		if UiObj:GetAttribute("Size") then
+			Properties["Size"] = UiObj:GetAttribute("Size")
+		end
+		LastComeIn = Tween({GuiObject = UiObj, Tweening = "ComeIn", Properties = Properties})
+		task.wait(0.1)
+	end
+
+	UI.Drag.Enabled = WindowInfo["Draggable"]
+	if LastComeIn then
+		LastComeIn.Completed:Wait()
+	end
+	UI.ClipsDescendants = false
+
+	self.Buttons.Size = self.Buttons:GetAttribute("startSize")
+	local ButtonsSizeTween = Tween({GuiObject = self.Buttons, Tweening = "ComeIn", Properties = "Size", Goal = self.Buttons:GetAttribute("Size")})
+
+	task.spawn(function()
+		ButtonsSizeTween.Completed:Wait()
+		for _, UiObj in self.Buttons.List:GetChildren() do
+			if not UiObj:IsA("GuiObject") then
+				continue
+			end
+			task.wait(0.15)
+			Tween({GuiObject = UiObj, Tweening = "Pop?", Properties = "Size", Goal = UiObj:GetAttribute("Size")})
+		end
+	end)
+
+	task.wait(TweenInfos.ComeIn.Time / 2 - 0.15)
+	Tween({GuiObject = UI.Corner, Tweening = "Linear", Properties = "TopRightRadius", Goal = UDim.new(0, 0)})
+end
+
+function WINDOW_METATABLE:SetTheme(Name)
+	local CustomTheme = GerpUI.Themes[Name] or DefaultTheme
+	self.UI.BackgroundColor3 = CustomTheme["Main Background"]
+	self.UI.Shadow.Color = CustomTheme["Main Background"]
+
+	for _, UiObj in self.UI:QueryDescendants("GuiObject") do
+		Window_UIObject(UiObj, CustomTheme)
+		if HasProperty(UiObj, "Text") then
+			Window_TextObject(UiObj, CustomTheme, self.Window_Info.Font)
+		end
+	end
+
+	self.Theme = CustomTheme
+end
+
+local TAB_METATABLE = {}
+TAB_METATABLE.__index = TAB_METATABLE
+
+function WINDOW_METATABLE:CreateTab(info)
+	local Window = self
+	local self = setmetatable({}, TAB_METATABLE)
+	local TabSettings = Rebuild(Tab_Information, info)
+
+	self.Name = TabSettings["Name"]
+	self.Enabled = TabSettings["Enabled"]
+	self.Window = Window
+
+	self.UI = Assets.Tab:Clone()
+	self.UI.Parent = Window.TabsUI
+	self.Icon = self.UI.Icon
+	self.UI.Text = TabSettings["Name"]
+	self.Icon.Image = TabSettings["Icon"]
+	self.Icon.Visible = TabSettings["Show Icon"]
+	self.UI.LayoutOrder = TabSettings["Show Icon"] and 0 or 1 -- tabs with no icons go to the bottom
+
+	Window.Tabs[TabSettings["Name"]] = self
+
+	self.UI.MouseButton1Click:Connect(function()
+		self:Toggle()
+	end)
+
+	if self.Enabled then
+		self:Enable()
+	end
+
+	return self
+end
+
+function TAB_METATABLE:Toggle()
+	self.Enabled = not self.Enabled
+	
+	if self.Enabled then
+		self:Enable()
+		for _, Tab in self.Window.Tabs do
+			if Tab == self then
+				continue
+			end
+			Tab:Disable()
+		end
+	else
+		self:Disable()
+	end
+
+	if not self.Content and self.Enabled then
+		Show(self.Window.Empty)
+	else
+		Hide(self.Window.Empty)
+	end
+end
+
+function TAB_METATABLE:Enable()
+	self.Icon.Shadow.Enabled = true
+	local ImageColor = self.Icon:GetAttribute("Color") or self.Window.Theme["Light Color"]
+	
+	Tween({GuiObject = self.UI, Tweening = "Linear2", Properties = "TextColor3", Goal = self.UI:GetAttribute("Color") or self.Window.Theme["Light Color"]})
+	Tween({GuiObject = self.Icon, Tweening = "Linear2", Properties = "ImageColor3", Goal = ImageColor})
+	self.Icon.Shadow.Color = ImageColor
+	Tween({GuiObject = self.Icon.Shadow, Tweening = "Linear2", Properties = "Transparency", Goal = 0.35})
+	self.Enabled = true
+
+	if self.Content then
+		for _, Section in self.Content do
+			Show(Section.UI, true)
+		end
+	end
+end
+
+function TAB_METATABLE:Disable()
+	Tween({GuiObject = self.Icon, Tweening = "Linear2", Properties = "ImageColor3", Goal = self.Window.Theme["Icon Color"]})
+	Tween({GuiObject = self.UI, Tweening = "Linear2", Properties = "TextColor3", Goal = self.Window.Theme["Main Text Color"]})
+	Tween({
+		GuiObject = self.Icon.Shadow,
+		Tweening = "Linear2",
+		Properties = "Transparency",
+		Goal = 1,
+		OnEnd = function()
+			self.Icon.Shadow.Enabled = false
+		end,
+	})
+	self.Enabled = false
+
+	if self.Content then
+		for _, Section in self.Content do
+			Hide(Section.UI, true)
+		end
+	end
+end
+
+local SECTION_METATABLE = {}
+SECTION_METATABLE.__index = SECTION_METATABLE
+
+function TAB_METATABLE:CreateSection(info)
+	local Tab = self
+	
+	if not Tab.Content then
+		Tab.Content = {}
+	end
+
+	local self = setmetatable({}, SECTION_METATABLE)
+	local SectionSettings = Rebuild(Section_Information, info)
+	
+	self.Tab = Tab
+	self.Name = SectionSettings["Name"]
+
+	self.UI = Assets.Section:Clone()
+	self.UI.Parent = Tab.Window.Contents
+
+	self.Information = self.UI:WaitForChild("Information")
+	self.Content_UI = self.UI:WaitForChild("Contents") -- container that holds each element
+
+	if Tab.Enabled then
+		Show(self.UI, true)
+	else
+		Hide(self.UI, true)
+	end
+	
+	self.Content_UI.List.Padding = SectionSettings["Padding"]
+	
+	self.Information.Visible = (SectionSettings["Name"] and SectionSettings["Description"]) ~= nil
+
+	if SectionSettings["Name"] then
+		self.Information.Title.Text = SectionSettings["Name"]
+	end
+	if SectionSettings["Description"] then
+		self.Information.Description.Text = SectionSettings["Description"]
+	end
+	
+	self.Content_UI.ChildAdded:Connect(function(b)
+		self.Content_UI:RemoveTag("NoVisible")
+		self.Content_UI.Visible = true
+		
+		if Tab.Enabled then
+			Show(b, true)
+		else
+			Hide(b, true)
+		end
+	end)
+	
+	Tab.Content[SectionSettings["Name"]] = self
+	return self
+end
+
+local BUTTON_METATABLE = {}
+BUTTON_METATABLE.__index = BUTTON_METATABLE
+
+function SECTION_METATABLE:AddButton(info)
+	local Section = self
+	
+	local self = setmetatable({}, BUTTON_METATABLE)
+	local ButtonSettings = Rebuild(Button_Information, info)
+	
+	self.Button = Assets.Types__.Button:Clone()
+	self.Button.Parent = Section.Content_UI
+	
+	self.Type = "Button"
+	
+	self.Label = self.Button:FindFirstChild("Label")
+	self.Label.Text = ButtonSettings["Name"]
+	
+	self.Icon = self.Button.Icon
+	self.Icon.Size = ButtonSettings["Icon Size"]
+	
+	self.Icon.Image = ButtonSettings["Icon"]
+	self.Icon.Visible = ButtonSettings["Show Icon"]
+	
+	self.OnClick = ButtonSettings["CallBack"]
+	
+	self.Button.MouseButton1Click:Connect(function()
+		self:Click()
+	end)
+	
+	self.Section = Section
+	
+	return self
+end
+
+function BUTTON_METATABLE:Click()
+	self.OnClick()
+end
+
+local TOGGLE_METATABLE = {}
+TOGGLE_METATABLE.__index = TOGGLE_METATABLE
+
+function SECTION_METATABLE:AddToggle(info)
+	local Section = self
+
+	local self = setmetatable({}, TOGGLE_METATABLE)
+	local ToggleSettings = Rebuild(Toggle_Information, info)
+
+	self.Toggle_UI = Assets.Types__[ToggleSettings.Type]:Clone()
+	self.Toggle_UI.Parent = Section.Content_UI
+	
+	self.Type = "Toggle"
+	
+	self.Label = self.Toggle_UI:FindFirstChild("Label")
+	self.Label.Text = ToggleSettings["Name"]
+
+	self.Icon = self.Toggle_UI.Icon
+	self.Icon.Size = ToggleSettings["Icon Size"]
+
+	self.Icon.Image = ToggleSettings["Icon"]
+	self.Icon.Visible = ToggleSettings["Show Icon"]
+	
+	self.Button = self.Toggle_UI.Button
+	
+	-- Could Be Nil!
+	
+	--
+	self.Circle = self.Button:FindFirstChild("Click")
+	self.Mark = self.Button:FindFirstChild("Mark")
+	--
+	
+	self.Enabled = ToggleSettings["Enabled"]
+	self.OnToggle = ToggleSettings["CallBack"]
+	
+	self.Section = Section
+	
+	if self.Enabled then
+		self:Enable()
+	else
+		self:Disable()
+	end
+	
+	if self.Mark then
+		self.Mark.TextTransparency = self.Enabled and Section.Tab.Window.Theme["Main Text Transparency"] or 1
+	end
+	
+	self.Button.MouseButton1Click:Connect(function()
+		self:Toggle()
+	end)
+	
+	return self
+end
+
+function TOGGLE_METATABLE:Toggle()
+	if self.Enabled then
+		self:Disable(true)
+	else
+		self:Enable(true)
+	end
+end
+
+function TOGGLE_METATABLE:Enable(real)
+	local C =  self.Section.Tab.Window.Theme
+	
+	if self.Toggle_UI.Name == "Toggle" then
+		Tween({GuiObject = self.Circle,Tweening = "Pop",Properties = "Position",Goal = self.Circle:GetAttribute("On")})
+	else
+		Tween({GuiObject = self.Mark,Tweening = "Linear2",Properties = "TextTransparency",Goal = C["Main Text Transparency"]})
+	end
+	
+	Tween({GuiObject = self.Button,Tweening = "Linear2",Properties = "BackgroundColor3",Goal = C["Toggled"]})
+	Tween({GuiObject = self.Button.Glow,Tweening = "Linear2",Properties = "Color",Goal = C["Toggled"]})	
+	
+	if real then
+		self.Enabled = not self.Enabled
+		self.Button:AddTag("Enabled")
+		self.OnToggle(true)
+	end
+end
+
+function TOGGLE_METATABLE:Disable(real)
+	local C =  self.Section.Tab.Window.Theme
+	
+	if self.Toggle_UI.Name == "Toggle" then
+		Tween({GuiObject = self.Circle,Tweening = "Pop",Properties = "Position",Goal = self.Circle:GetAttribute("Off")})
+	else
+		Tween({GuiObject = self.Mark,Tweening = "Linear2",Properties = "TextTransparency",Goal = 1})
+	end
+	
+	local bg = self.Toggle_UI.Name == "Toggle" and C["Not Toggled"] or C["Secondary"]
+	
+	Tween({GuiObject = self.Button,Tweening = "Linear2",Properties = "BackgroundColor3",Goal = bg})
+	Tween({GuiObject = self.Button.Glow,Tweening = "Linear2",Properties = "Color",Goal = bg})
+	
+	if real then
+		self.Enabled = not self.Enabled
+		self.Button:RemoveTag("Enabled")
+		self.OnToggle(false)
+	end
+end
+
+local function CallFunction(func,...)
+	if func then
+		func(...)
+	end
+end
+
+local METATABLES = {TOGGLE_METATABLE,BUTTON_METATABLE}
+
+for _, metatable in pairs(METATABLES) do
+	function metatable:BindInput(Input)
+		Inputs[Enum.KeyCode[Input]] = function()
+			local Type__ = self.Type
+			local func = Type__ == "Button" and self.Click or self.Toggle
+			
+			if func then
+				func(self)
+			end
+		end
+	end
+end
+
+UserInputService.InputBegan:Connect(function(inp,g)
+	if g then return end
+	
+	CallFunction(Inputs[inp.KeyCode])
+end)
+
+return GerpUI
