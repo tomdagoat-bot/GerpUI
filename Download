@@ -7,7 +7,7 @@ if not isfile("GerpUI.rbxm") then
     writefile("GerpUI.rbxm", data)
 end
 
-local Gui = game:GetObjects(getcustomasset("GerpUI.rbxm"))
+local Gui = game:GetObjects(getcustomasset("GerpUI.rbxm"))[1]
 Gui.Parent = ReplicatedStorage
 
 local URL_Assets = "https://github.com/tomdagoat-bot/GerpUI/raw/refs/heads/main/Assets.rbxm"
@@ -17,5 +17,5 @@ if not isfile("Assets.rbxm") then
     writefile("Assets.rbxm", data)
 end
 
-local Assets = game:GetObjects(getcustomasset("Assets.rbxm"))
+local Assets = game:GetObjects(getcustomasset("Assets.rbxm"))[1]
 Assets.Parent = ReplicatedStorage
