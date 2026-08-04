@@ -35,7 +35,6 @@ local Assets = game:GetObjects(getcustomasset("Assets.rbxm"))
 Assets.Parent = ReplicatedStorage
 
 local Inputs = {}
-local Assets = ReplicatedStorage:WaitForChild("Assets")
 
 --[[ Executor Only Function
 	Doing This Incase The Executor Doesnt Support These Functions
