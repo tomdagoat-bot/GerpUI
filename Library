@@ -14,25 +14,10 @@ local Player = Players.LocalPlayer
 local PlayerGui = Player:WaitForChild("PlayerGui")
 local Mouse = Player:GetMouse()
 
-local URL_UI = "https://github.com/tomdagoat-bot/GerpUI/raw/refs/heads/main/GerpUI.rbxm"
+local RbxmLoader = loadstring(game:HttpGet("https://raw.githubusercontent.com/tomdagoat-bot/Rbxm-Loader/refs/heads/main/Loader", true))()
 
-if not isfile("GerpUI.rbxm") then
-    local data = game:HttpGet(URL_UI)
-    writefile("GerpUI.rbxm", data)
-end
-
-local Gui = game:GetObjects(getcustomasset("GerpUI.rbxm"))[1]
-Gui.Parent = ReplicatedStorage
-
-local URL_Assets = "https://github.com/tomdagoat-bot/GerpUI/raw/refs/heads/main/Assets.rbxm"
-
-if not isfile("Assets.rbxm") then
-    local data = game:HttpGet(URL_Assets)
-    writefile("Assets.rbxm", data)
-end
-
-local Assets = game:GetObjects(getcustomasset("Assets.rbxm"))[1]
-Assets.Parent = ReplicatedStorage
+local Gui = RbxmLoader.Load("https://github.com/tomdagoat-bot/GerpUI/raw/refs/heads/main/GerpUI.rbxm","GerpUI.rbxm",ReplicatedStorage)
+local Assets = RbxmLoader.Load("https://github.com/tomdagoat-bot/GerpUI/raw/refs/heads/main/Assets.rbxm","Assets.rbxm",ReplicatedStorage)
 
 local Inputs = {}
 
