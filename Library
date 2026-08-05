@@ -790,7 +790,7 @@ for _, metatable in pairs(METATABLES) do
 			local func = Type__ == "Button" and self.Click or self.Toggle
 			
 			if func then
-				func(self)
+				func(self,true)
 			end
 		end
 	end
