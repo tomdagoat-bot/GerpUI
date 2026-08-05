@@ -721,6 +721,7 @@ function TOGGLE_METATABLE:Toggle()
 end
 
 function TOGGLE_METATABLE:Enable(real)
+    if self.Enabled then return end
 	local C =  self.Section.Tab.Window.Theme
 	
 	if self.Toggle_UI.Name == "Toggle" then
@@ -740,6 +741,8 @@ function TOGGLE_METATABLE:Enable(real)
 end
 
 function TOGGLE_METATABLE:Disable(real)
+    if not self.Enabled then return end
+
 	local C =  self.Section.Tab.Window.Theme
 	
 	if self.Toggle_UI.Name == "Toggle" then
