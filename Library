@@ -695,10 +695,14 @@ function SECTION_METATABLE:AddToggle(info)
 
 	self.Section = Section
 
-	self:Toggle(false)
-
 	if self.Mark then
 		self.Mark.TextTransparency = self.Enabled and Section.Tab.Window.Theme["Main Text Transparency"] or 1
+	end
+	
+	if self.Enabled then
+		self:Enable(false)
+	else
+		self:Disable(false)
 	end
 
 	self.Button.MouseButton1Click:Connect(function()
