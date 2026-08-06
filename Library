@@ -45,7 +45,7 @@ local PropertiesCACH = {}
 local function HasProperty(Object: Instance, Property: string): boolean
 	local Class = Object.ClassName
 	local ClassCache = PropertiesCACH[Class]
-	
+
 	if not ClassCache then
 		ClassCache = {}
 		PropertiesCACH[Class] = ClassCache
@@ -65,7 +65,7 @@ end
 
 local function Rebuild(Original, Changes)
 	local Result : typeof(Original) = {}
-	
+
 	for Key, Value in Original do
 		Result[Key] = Value
 	end
@@ -74,7 +74,7 @@ local function Rebuild(Original, Changes)
 			Result[Key] = Value
 		end
 	end
-	
+
 	return Result
 end
 
@@ -508,7 +508,7 @@ end
 
 function TAB_METATABLE:Toggle()
 	self.Enabled = not self.Enabled
-	
+
 	if self.Enabled then
 		self:Enable()
 		for _, Tab in self.Window.Tabs do
@@ -531,7 +531,7 @@ end
 function TAB_METATABLE:Enable()
 	self.Icon.Shadow.Enabled = true
 	local ImageColor = self.Icon:GetAttribute("Color") or self.Window.Theme["Light Color"]
-	
+
 	Tween({GuiObject = self.UI, Tweening = "Linear2", Properties = "TextColor3", Goal = self.UI:GetAttribute("Color") or self.Window.Theme["Light Color"]})
 	Tween({GuiObject = self.Icon, Tweening = "Linear2", Properties = "ImageColor3", Goal = ImageColor})
 	self.Icon.Shadow.Color = ImageColor
@@ -571,14 +571,14 @@ SECTION_METATABLE.__index = SECTION_METATABLE
 
 function TAB_METATABLE:CreateSection(info)
 	local Tab = self
-	
+
 	if not Tab.Content then
 		Tab.Content = {}
 	end
 
 	local self = setmetatable({}, SECTION_METATABLE)
 	local SectionSettings = Rebuild(Section_Information, info)
-	
+
 	self.Tab = Tab
 	self.Name = SectionSettings["Name"]
 
@@ -593,9 +593,9 @@ function TAB_METATABLE:CreateSection(info)
 	else
 		Hide(self.UI, true)
 	end
-	
+
 	self.Content_UI.List.Padding = SectionSettings["Padding"]
-	
+
 	self.Information.Visible = (SectionSettings["Name"] and SectionSettings["Description"]) ~= nil
 
 	if SectionSettings["Name"] then
@@ -604,18 +604,18 @@ function TAB_METATABLE:CreateSection(info)
 	if SectionSettings["Description"] then
 		self.Information.Description.Text = SectionSettings["Description"]
 	end
-	
+
 	self.Content_UI.ChildAdded:Connect(function(b)
 		self.Content_UI:RemoveTag("NoVisible")
 		self.Content_UI.Visible = true
-		
+
 		if Tab.Enabled then
 			Show(b, true)
 		else
 			Hide(b, true)
 		end
 	end)
-	
+
 	Tab.Content[SectionSettings["Name"]] = self
 	return self
 end
@@ -625,32 +625,32 @@ BUTTON_METATABLE.__index = BUTTON_METATABLE
 
 function SECTION_METATABLE:AddButton(info)
 	local Section = self
-	
+
 	local self = setmetatable({}, BUTTON_METATABLE)
 	local ButtonSettings = Rebuild(Button_Information, info)
-	
+
 	self.Button = Assets.Types__.Button:Clone()
 	self.Button.Parent = Section.Content_UI
-	
+
 	self.Type = "Button"
-	
+
 	self.Label = self.Button:FindFirstChild("Label")
 	self.Label.Text = ButtonSettings["Name"]
-	
+
 	self.Icon = self.Button.Icon
 	self.Icon.Size = ButtonSettings["Icon Size"]
-	
+
 	self.Icon.Image = ButtonSettings["Icon"]
 	self.Icon.Visible = ButtonSettings["Show Icon"]
-	
+
 	self.OnClick = ButtonSettings["CallBack"]
-	
+
 	self.Button.MouseButton1Click:Connect(function()
 		self:Click()
 	end)
-	
+
 	self.Section = Section
-	
+
 	return self
 end
 
@@ -669,9 +669,9 @@ function SECTION_METATABLE:AddToggle(info)
 
 	self.Toggle_UI = Assets.Types__[ToggleSettings.Type]:Clone()
 	self.Toggle_UI.Parent = Section.Content_UI
-	
+
 	self.Type = "Toggle"
-	
+
 	self.Label = self.Toggle_UI:FindFirstChild("Label")
 	self.Label.Text = ToggleSettings["Name"]
 
@@ -680,59 +680,55 @@ function SECTION_METATABLE:AddToggle(info)
 
 	self.Icon.Image = ToggleSettings["Icon"]
 	self.Icon.Visible = ToggleSettings["Show Icon"]
-	
+
 	self.Button = self.Toggle_UI.Button
-	
+
 	-- Could Be Nil!
-	
+
 	--
 	self.Circle = self.Button:FindFirstChild("Click")
 	self.Mark = self.Button:FindFirstChild("Mark")
 	--
-	
+
 	self.Enabled = ToggleSettings["Enabled"]
 	self.OnToggle = ToggleSettings["CallBack"]
-	
+
 	self.Section = Section
-	
-	if self.Enabled then
-		self:Enable()
-	else
-		self:Disable()
-	end
-	
+
+	self:Toggle(false)
+
 	if self.Mark then
 		self.Mark.TextTransparency = self.Enabled and Section.Tab.Window.Theme["Main Text Transparency"] or 1
 	end
-	
+
 	self.Button.MouseButton1Click:Connect(function()
 		self:Toggle()
 	end)
-	
+
 	return self
 end
 
-function TOGGLE_METATABLE:Toggle()
+function TOGGLE_METATABLE:Toggle(override)
+	local C = override ~= nil and override or true
 	if self.Enabled then
-		self:Disable(true)
+		self:Disable(C)
 	else
-		self:Enable(true)
+		self:Enable(C)
 	end
 end
 
 function TOGGLE_METATABLE:Enable(real)
-    if self.Enabled then return end
 	local C =  self.Section.Tab.Window.Theme
-	
+
 	if self.Toggle_UI.Name == "Toggle" then
 		Tween({GuiObject = self.Circle,Tweening = "Pop",Properties = "Position",Goal = self.Circle:GetAttribute("On")})
 	else
 		Tween({GuiObject = self.Mark,Tweening = "Linear2",Properties = "TextTransparency",Goal = C["Main Text Transparency"]})
 	end
-	
+
 	Tween({GuiObject = self.Button,Tweening = "Linear2",Properties = "BackgroundColor3",Goal = C["Toggled"]})
 	Tween({GuiObject = self.Button.Glow,Tweening = "Linear2",Properties = "Color",Goal = C["Toggled"]})	
-	
+
 	if real then
 		self.Enabled = not self.Enabled
 		self.Button:AddTag("Enabled")
@@ -741,21 +737,19 @@ function TOGGLE_METATABLE:Enable(real)
 end
 
 function TOGGLE_METATABLE:Disable(real)
-    if not self.Enabled then return end
-
 	local C =  self.Section.Tab.Window.Theme
-	
+
 	if self.Toggle_UI.Name == "Toggle" then
 		Tween({GuiObject = self.Circle,Tweening = "Pop",Properties = "Position",Goal = self.Circle:GetAttribute("Off")})
 	else
 		Tween({GuiObject = self.Mark,Tweening = "Linear2",Properties = "TextTransparency",Goal = 1})
 	end
-	
+
 	local bg = self.Toggle_UI.Name == "Toggle" and C["Not Toggled"] or C["Secondary"]
-	
+
 	Tween({GuiObject = self.Button,Tweening = "Linear2",Properties = "BackgroundColor3",Goal = bg})
 	Tween({GuiObject = self.Button.Glow,Tweening = "Linear2",Properties = "Color",Goal = bg})
-	
+
 	if real then
 		self.Enabled = not self.Enabled
 		self.Button:RemoveTag("Enabled")
@@ -776,7 +770,7 @@ for _, metatable in pairs(METATABLES) do
 		Inputs[Enum.KeyCode[Input]] = function()
 			local Type__ = self.Type
 			local func = Type__ == "Button" and self.Click or self.Toggle
-			
+
 			if func then
 				func(self,true)
 			end
@@ -786,7 +780,7 @@ end
 
 UserInputService.InputBegan:Connect(function(inp,g)
 	if g then return end
-	
+
 	CallFunction(Inputs[inp.KeyCode])
 end)
 
