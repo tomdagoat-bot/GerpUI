@@ -700,9 +700,9 @@ function SECTION_METATABLE:AddToggle(info)
 	end
 	
 	if self.Enabled then
-		self:Enable(false)
+		self:Enable()
 	else
-		self:Disable(false)
+		self:Disable()
 	end
 
 	self.Button.MouseButton1Click:Connect(function()
@@ -713,112 +713,54 @@ function SECTION_METATABLE:AddToggle(info)
 end
 
 function TOGGLE_METATABLE:Toggle(override)
-	local NewState = not self.Enabled
-
-	if override ~= nil then
-		NewState = override
-	end
-
-	if NewState then
-		self:Enable(true)
+	local C = override ~= nil and override or true
+	if self.Enabled then
+		self:Disable(C)
 	else
-		self:Disable(true)
+		self:Enable(C)
 	end
 end
 
 function TOGGLE_METATABLE:Enable(real)
-	local C = self.Section.Tab.Window.Theme
+	local C =  self.Section.Tab.Window.Theme
 
 	if self.Toggle_UI.Name == "Toggle" then
-		Tween({
-			GuiObject = self.Circle,
-			Tweening = "Pop",
-			Properties = "Position",
-			Goal = self.Circle:GetAttribute("On")
-		})
+		Tween({GuiObject = self.Circle,Tweening = "Pop",Properties = "Position",Goal = self.Circle:GetAttribute("On")})
 	else
-		Tween({
-			GuiObject = self.Mark,
-			Tweening = "Linear2",
-			Properties = "TextTransparency",
-			Goal = C["Main Text Transparency"]
-		})
+		Tween({GuiObject = self.Mark,Tweening = "Linear2",Properties = "TextTransparency",Goal = C["Main Text Transparency"]})
 	end
 
-	Tween({
-		GuiObject = self.Button,
-		Tweening = "Linear2",
-		Properties = "BackgroundColor3",
-		Goal = C["Toggled"]
-	})
-
-	Tween({
-		GuiObject = self.Button.Glow,
-		Tweening = "Linear2",
-		Properties = "Color",
-		Goal = C["Toggled"]
-	})
+	Tween({GuiObject = self.Button,Tweening = "Linear2",Properties = "BackgroundColor3",Goal = C["Toggled"]})
+	Tween({GuiObject = self.Button.Glow,Tweening = "Linear2",Properties = "Color",Goal = C["Toggled"]})	
 
 	if real then
-		if self.Enabled then
-			return
-		end
-
 		self.Enabled = true
 		self.Button:AddTag("Enabled")
-
 		self.OnToggle(true)
 	end
 end
 
 function TOGGLE_METATABLE:Disable(real)
-	local C = self.Section.Tab.Window.Theme
+	local C =  self.Section.Tab.Window.Theme
 
 	if self.Toggle_UI.Name == "Toggle" then
-		Tween({
-			GuiObject = self.Circle,
-			Tweening = "Pop",
-			Properties = "Position",
-			Goal = self.Circle:GetAttribute("Off")
-		})
+		Tween({GuiObject = self.Circle,Tweening = "Pop",Properties = "Position",Goal = self.Circle:GetAttribute("Off")})
 	else
-		Tween({
-			GuiObject = self.Mark,
-			Tweening = "Linear2",
-			Properties = "TextTransparency",
-			Goal = 1
-		})
+		Tween({GuiObject = self.Mark,Tweening = "Linear2",Properties = "TextTransparency",Goal = 1})
 	end
 
-	local bg = self.Toggle_UI.Name == "Toggle"
-		and C["Not Toggled"]
-		or C["Secondary"]
+	local bg = self.Toggle_UI.Name == "Toggle" and C["Not Toggled"] or C["Secondary"]
 
-	Tween({
-		GuiObject = self.Button,
-		Tweening = "Linear2",
-		Properties = "BackgroundColor3",
-		Goal = bg
-	})
-
-	Tween({
-		GuiObject = self.Button.Glow,
-		Tweening = "Linear2",
-		Properties = "Color",
-		Goal = bg
-	})
+	Tween({GuiObject = self.Button,Tweening = "Linear2",Properties = "BackgroundColor3",Goal = bg})
+	Tween({GuiObject = self.Button.Glow,Tweening = "Linear2",Properties = "Color",Goal = bg})
 
 	if real then
-		if not self.Enabled then
-			return
-		end
-
 		self.Enabled = false
 		self.Button:RemoveTag("Enabled")
-
 		self.OnToggle(false)
 	end
 end
+
 local function CallFunction(func,...)
 	if func then
 		func(...)
