@@ -21,10 +21,6 @@ local Assets = RbxmLoader.LoadRbxm("https://github.com/tomdagoat-bot/GerpUI/raw/
 
 local Inputs = {}
 
---[[ Executor Only Function
-	Doing This Incase The Executor Doesnt Support These Functions
-]]
-
 if not gethui then
 	-- returns a copy of coregui
 	gethui = function()
