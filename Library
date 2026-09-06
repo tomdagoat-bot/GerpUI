@@ -14,10 +14,10 @@ local Player = Players.LocalPlayer
 local PlayerGui = Player:WaitForChild("PlayerGui")
 local Mouse = Player:GetMouse()
 
-local RbxmLoader = loadstring(game:HttpGet("https://raw.githubusercontent.com/tomdagoat-bot/Rbxm-Loader/refs/heads/main/Loader", true))()
+local FileLoader = loadstring(httpget("https://raw.githubusercontent.com/tomdagoat-bot/Rbxm-Loader/refs/heads/main/Code"))()
 
-local Gui = RbxmLoader.LoadRbxm("https://github.com/tomdagoat-bot/GerpUI/raw/refs/heads/main","GerpUI.rbxm",ReplicatedStorage,"Gerp_UI")
-local Assets = RbxmLoader.LoadRbxm("https://github.com/tomdagoat-bot/GerpUI/raw/refs/heads/main","Assets.rbxm",ReplicatedStorage,"Gerp_UI")
+local Gui = FileLoader.Load("https://github.com/tomdagoat-bot/GerpUI/raw/refs/heads/main","GerpUI.rbxm",ReplicatedStorage,"Gerp_UI")
+local Assets = FileLoader.Load("https://github.com/tomdagoat-bot/GerpUI/raw/refs/heads/main","Assets.rbxm",ReplicatedStorage,"Gerp_UI")
 
 local Inputs = {}
 
@@ -36,15 +36,15 @@ end
 
 --[[ End Of Executor Functions ]]
 
-local PropertiesCACH = {}
+local Properties_Cache = {}
 
 local function HasProperty(Object: Instance, Property: string): boolean
 	local Class = Object.ClassName
-	local ClassCache = PropertiesCACH[Class]
+	local ClassCache = Properties_Cache[Class]
 
 	if not ClassCache then
 		ClassCache = {}
-		PropertiesCACH[Class] = ClassCache
+		Properties_Cache[Class] = ClassCache
 	end
 
 	local Cached = ClassCache[Property]
@@ -694,7 +694,7 @@ function SECTION_METATABLE:AddToggle(info)
 	if self.Mark then
 		self.Mark.TextTransparency = self.Enabled and Section.Tab.Window.Theme["Main Text Transparency"] or 1
 	end
-	
+
 	if self.Enabled then
 		self:Enable()
 	else
