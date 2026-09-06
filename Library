@@ -16,8 +16,8 @@ local Mouse = Player:GetMouse()
 
 local RbxmLoader = loadstring(game:HttpGet("https://raw.githubusercontent.com/tomdagoat-bot/Rbxm-Loader/refs/heads/main/Loader", true))()
 
-local Gui = RbxmLoader.LoadRbxm("https://github.com/tomdagoat-bot/GerpUI/raw/refs/heads/main/GerpUI.rbxm","GerpUI.rbxm",ReplicatedStorage,"Gerp_UI")
-local Assets = RbxmLoader.LoadRbxm("https://github.com/tomdagoat-bot/GerpUI/raw/refs/heads/main/Assets.rbxm","Assets.rbxm",ReplicatedStorage,"Gerp_UI")
+local Gui = RbxmLoader.LoadRbxm("https://github.com/tomdagoat-bot/GerpUI/raw/refs/heads/main","GerpUI.rbxm",ReplicatedStorage,"Gerp_UI")
+local Assets = RbxmLoader.LoadRbxm("https://github.com/tomdagoat-bot/GerpUI/raw/refs/heads/main","Assets.rbxm",ReplicatedStorage,"Gerp_UI")
 
 local Inputs = {}
 
