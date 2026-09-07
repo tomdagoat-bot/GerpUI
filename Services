@@ -1,0 +1,488 @@
+if not getgenv then
+	getgenv = function()
+		return shared
+	end
+end
+
+getgenv().FileLoader = loadstring(httpget("https://raw.githubusercontent.com/tomdagoat-bot/Rbxm-Loader/refs/heads/main/Code"))()
+
+-- [[ ROBLOX SERVICES ]] --
+
+const TweenService = game:GetService("TweenService")
+const RunService = game:GetService("RunService")
+const Players = game:GetService("Players")
+
+-- [[ EXTRA ]]
+
+const Storage = getgenv().FileLoader.Load("https://raw.githubusercontent.com/tomdagoat-bot/GerpUI/refs/heads/main","Storage.rbxm",game:GetService("ReplicatedStorage"),"GerpUI")
+const LocalPlayer = Players.LocalPlayer
+const Live : Folder = getgenv().Live
+
+-- [[ GERP SERVICES ]] --
+
+const MathService = {}
+const ConnectionService = {}
+const DelayService = {}
+const OnEvent = {}
+const HighlightService = {}
+
+-- [[ MATH SERVICE ]] --
+
+MathService.Pitch = false
+
+MathService.GetCFrame = function(object : CFrame | Vector3 | Part) : CFrame
+	if typeof(object) == "CFrame" then
+		return object
+	elseif typeof(object) == "Vector3" then
+		return CFrame.new(object)
+	elseif typeof(object) == "Instance" and object:IsA("BasePart") then
+		return object.CFrame
+	elseif typeof(object) == "function" then
+		return object()
+	end
+	return CFrame.new(0,0,0)
+end
+
+MathService.GetPosition = function(object : CFrame | Vector3 | Part) : Vector3
+	if typeof(object) == "CFrame" then
+		return object.Position
+	elseif typeof(object) == "Vector3" then
+		return object
+	elseif typeof(object) == "Instance" and object:IsA("BasePart") then
+		return object.Position
+	elseif typeof(object) == "function" then
+		return object()
+	end
+	return Vector3.zero
+end
+
+MathService.GetDistance = function(Point1,Point2) : number
+	Point1 = MathService.GetPosition(Point1)
+	Point2 = MathService.GetPosition(Point2)
+	return (Point2 - Point1).Magnitude
+end
+
+MathService.Alpha = function(Current : number,Max : number,Multiplier) : number
+	Multiplier = Multiplier or 1
+	return math.clamp(Current / Max * Multiplier,0,Multiplier)
+end
+
+MathService.GetDirection = function(Origin,Goal)
+	Origin = MathService.GetPosition(Origin)
+	Goal = MathService.GetPosition(Goal)
+	local Direction = (Goal - Origin)
+	Direction = MathService.Pitch and Direction or Vector3.new(Direction.X,0,Direction.Z)
+	if Direction.Magnitude == 0 then
+		return Vector3.zero
+	end
+	return Direction.Unit
+end
+
+MathService.LookAt = function(Part : BasePart,Goal : CFrame,Lerp : number)
+	Lerp = Lerp or 1
+	if Lerp < 0 then 
+		Lerp = 0.1 
+	elseif Lerp > 1 then 
+		Lerp = 1
+	end 
+	local StareAt
+	local Origin = MathService.GetPosition(Part)
+	Goal = MathService.GetPosition(Goal)
+	if MathService.Pitch then
+		StareAt = CFrame.new(Origin,Goal)
+	else
+		local Direction = MathService.GetDirection(Origin,Goal)
+		StareAt = CFrame.new(Origin) * CFrame.Angles(0,math.atan2(-Direction.X,-Direction.Z),0)
+	end
+	Part.CFrame = Part.CFrame:Lerp(StareAt,Lerp)
+end
+
+MathService.Dot = function(Origin,Goal) : number
+	local Direction = MathService.GetDirection(Origin,Goal)
+	local Dot = CFrame.new(Origin).LookVector:Dot(Direction)
+	return Dot
+end
+
+MathService.Lerp = function(Origin : BasePart,Goal,Lerp : number)
+	Goal = MathService.GetCFrame(Goal)
+
+	Lerp = Lerp or 1
+	if Lerp < 0 then 
+		Lerp = 0.1 
+	elseif Lerp > 1 then 
+		Lerp = 1
+	end 
+
+	Origin.CFrame = Origin.CFrame:Lerp(Goal,Lerp)
+end
+
+function MathService:Behind(Origin,Goal)
+	return MathService.Dot(Origin,Goal) >= 0
+end
+
+MathService.Nearest = function(Origin : BasePart,IgnoreDeath) : Model
+	IgnoreDeath = IgnoreDeath == nil and true
+	local Nearest = nil
+	local MaxDistance = math.huge
+	for _,Model in pairs(getgenv().Live:GetChildren()) do
+		if Model == LocalPlayer.Character then continue end
+		local ROOT = Model:FindFirstChild("HumanoidRootPart")
+		if not ROOT then continue end
+		local HUM = Model:FindFirstChildOfClass("Humanoid")
+		if not HUM then continue end
+		if IgnoreDeath and HUM.Health <= 0 then continue end
+
+		local Distance = MathService.GetDistance(ROOT,Origin)
+		if Distance > MaxDistance then continue end
+		Nearest = Model
+		MaxDistance = Distance
+	end
+	return Nearest,MaxDistance
+end
+
+function MathService:Tween(Origin,Goal,Duration,LookAt)
+	local elapsed = 0
+	ConnectionService.Connect("CFrameLerp",Origin:FindFirstAncestorOfClass("Model"),RunService.RenderStepped,Duration,"Connect",function(DeltaTime)
+		elapsed += DeltaTime
+		local Lerp = MathService.Alpha(elapsed,Duration)
+		MathService.Lerp(Origin,Goal,Lerp)
+
+		if LookAt then
+			MathService.LookAt(Origin,Goal,Lerp)
+		end
+	end)
+end
+
+-- [[ DELAY SERVICE ]]
+
+getgenv().CountDowns = {}
+getgenv().Delays = setmetatable({}, {__mode = 'v'})
+
+DelayService.Delay = function(Name,Seconds,Function)
+	if not Seconds then return end
+	if getgenv().Delays[Name] then
+		task.cancel(getgenv().Delays[Name])
+	end
+	getgenv().Delays[Name] = task.delay(Seconds,Function)
+	if typeof(Name) == "Instance" and Name ~= game then
+		Name.AncestryChanged:Once(function()
+			getgenv().Delays[Name] = nil
+		end)
+	end
+	return getgenv().Delays[Name]
+end
+
+DelayService.Yield = function(Condition : () -> (boolean),Timeout)
+	local Elapsed = 0
+	while not Condition() do
+		local DeltaTime = RunService.RenderStepped:Wait()
+		Elapsed += DeltaTime
+		if Timeout and Elapsed >= Timeout then
+			break
+		end
+	end
+end
+
+DelayService.Cancel = function(Name)
+	if getgenv().Delays[Name] then
+		task.cancel(getgenv().Delays[Name])
+		getgenv().Delays[Name] = nil
+	end
+end
+
+DelayService.CountDown = function(Name, Duration, Rate, Callback, Ended)
+	Rate = Rate or 1
+	local Elapsed = 0
+	local Current = Duration
+
+	Callback(Current)
+	getgenv().CountDowns[Name] = Ended
+
+	ConnectionService.Connect(Name.."-Countdown", game, RunService.RenderStepped, nil, "Connect", function(dt)
+		Elapsed += dt
+		if Elapsed < Rate then return end
+		Elapsed -= Rate
+
+		Current = math.max(0, math.floor((Current - Rate) * 10) / 10)
+		Callback(Current)
+
+		if Current <= 0 then
+			ConnectionService.Disconnect(Name.."-Countdown", game)
+			getgenv().CountDowns[Name] = nil
+			if Ended then Ended() end
+		end
+	end)
+end
+
+DelayService.Cancel_CountDown = function(Name,Run)
+	if Run and getgenv().CountDowns[Name] then
+		getgenv().CountDowns[Name]()
+	end
+	ConnectionService.Disconnect(Name.."-Countdown",game)
+end
+
+-- [[ CONNECTION SERVICE ]]
+
+getgenv().Connections = {}
+
+const function Connection(object)
+	if not getgenv().Connections[object] then
+		getgenv().Connections[object] = {}
+		if typeof(object) == "Instance" then
+			object.AncestryChanged:Once(function()
+				getgenv().Connections[object] = nil
+			end)
+			object.Destroying:Once(function()
+				getgenv().Connections[object] = nil
+			end)
+		end
+	end
+	return getgenv().Connections[object]
+end
+
+export type CT = "Connect" | "Yield" | "Once" 
+
+ConnectionService.Connect = function(Name : string,object : any,Signal : RBXScriptSignal,Duration,ConnectionType : CT,Callback : () -> ())
+	object = object or ConnectionType
+
+	local Container = Connection(object)
+	if Container[Name] then
+		Container[Name]:Disconnect()
+	end
+
+	local Connection
+	if ConnectionType == "Once" then
+		Connection = Signal:Once(function(...)
+			Callback(...)
+			Container[Name] = nil
+		end)
+	elseif ConnectionType == "Yield" then
+		local args = Signal:Wait()
+		Callback(args)
+	else
+		Connection = Signal:Connect(Callback)
+	end
+
+	Container[Name] = Connection
+
+	DelayService.Delay(Name,Duration,function()
+		Connection:Disconnect()
+		Container[Name] = nil
+	end)
+
+	return Connection
+end
+
+ConnectionService.Disconnect = function(Name : string | {string},object : any)
+	local Container = Connection(object)
+	if next(Container) == nil then
+		return
+	end
+
+	local Lookup = {}
+
+	if typeof(Name) == "string" then
+		Name = {Name}
+	end
+
+	if Name ~= nil then
+		for _, Event in Name do
+			Lookup[Event] = true
+		end
+
+		Name = Lookup
+	end
+
+	for ConnectionName, Connection in Container do
+		if Name then
+			if Name[ConnectionName] then
+				Connection:Disconnect()
+				Container[ConnectionName] = nil
+			end
+		else
+			Connection:Disconnect()
+			Container[ConnectionName] = nil
+		end
+	end
+end
+
+-- [[ ON EVENT ]]
+
+OnEvent.Binds = {
+	["PlayerAdded"] = {},
+	["PlayerRemoving"] = {},
+	["CharacterAdded"] = {},
+	["CharacterRemoving"] = {},
+	["MyCharacterAdded"] = {},
+	["MyCharacterRemoving"] = {},
+}
+
+local Events = Storage.Events
+
+local function Event(Name)
+	local Bindable = Instance.new("BindableEvent")
+	Bindable.Parent = Events
+	Bindable.Name = Name
+	return Bindable
+end
+
+OnEvent.new = function(Name)
+	if OnEvent.Binds[Name] then
+		return OnEvent.Binds[Name]
+	end
+	OnEvent.Binds[Name] = {}
+
+	local Bindable = Event(Name)
+
+	Bindable.Event:Connect(function(...)
+		for _, Bind in pairs(OnEvent.Binds[Name]) do
+			Bind(...)
+		end
+	end)
+
+	return OnEvent.Binds[Name]
+end
+
+OnEvent.Fire = function(Event,...)
+	OnEvent.new(Event)
+	local Bindable = Events:FindFirstChild(Event)
+	Bindable:Fire(...)
+end
+
+export type Eventation = "PlayerAdded" | "PlayerRemoving" | "CharacterAdded" | "CharacterRemoving" | "MyCharacterAdded" | "MyCharacterRemoving" | string
+
+OnEvent.Bind = function(Event : string,OnBind : (Player | Model | any) -> ())
+	local Binds = OnEvent.new(Event)
+	table.insert(Binds,OnBind)
+end
+
+function OnEvent:Init()
+	local function Joined(Player : Player)
+		if Player == LocalPlayer then return end
+		local Added = OnEvent.new("PlayerAdded")
+
+		for _, Bind in Added do
+			Bind(Player)
+		end
+	end
+
+	local function Left(Player)
+		if Player == LocalPlayer then return end
+		local Left = OnEvent.new("PlayerRemoving")
+
+		for _, Bind in Left do
+			Bind(Player)
+		end
+		ConnectionService.Disconnect(nil,Player)
+	end
+
+	for _, Player in Players:GetPlayers() do
+		Joined(Player)
+	end
+	Players.PlayerAdded:Connect(Joined)
+	Players.PlayerRemoving:Connect(Left)
+
+	local function MyCharAdded(Character)
+		local MyCharacterAdded = OnEvent.new("MyCharacterAdded")
+		for _, Bind in MyCharacterAdded do
+			Bind(Character)
+		end
+	end
+
+	local function MyCharRemoving(Character)
+		local MyCharacterRemoving = OnEvent.new("MyCharacterRemoving")
+		for _, Bind in MyCharacterRemoving do
+			Bind(Character)
+		end
+		ConnectionService.Disconnect(nil,Character)
+	end
+
+	if LocalPlayer.Character then
+		MyCharAdded(LocalPlayer.Character)
+	end
+	LocalPlayer.CharacterRemoving:Connect(MyCharRemoving)
+	LocalPlayer.CharacterAdded:Connect(MyCharAdded)
+
+	local function CharAdded(Character)
+		if Character == LocalPlayer.Character then return end
+		local CharacterAdded = OnEvent.new("CharacterAdded")
+		for _, Bind in CharacterAdded do
+			Bind(Character)
+		end
+	end
+
+	local function CharRemoving(Character)
+		if Character == LocalPlayer.Character then return end
+		local CharacterRemoving = OnEvent.new("CharacterRemoving")
+		for _, Bind in CharacterRemoving do
+			Bind(Character)
+		end
+	end
+
+	for _, Character in getgenv().Live:GetChildren() do
+		CharAdded(Character)
+	end
+
+	getgenv().Live.ChildAdded:Connect(CharAdded)
+	getgenv().Live.ChildRemoved:Connect(CharRemoving)
+
+end
+
+-- [[ HIGHLIGHT SERVICE ]]
+
+const Highlights = Storage.Highlights
+const Fade = TweenInfo.new(0.3,Enum.EasingStyle.Linear,Enum.EasingDirection.Out)
+
+HighlightService.FadeOut = function(Highlight)
+	if not Highlight then return end
+	const Tween = TweenService:Create(Highlight,Fade,{OutlineTransparency = 1,FillTransparency = 1})
+	Tween:Play()
+	Tween.Completed:Once(function()
+		Highlight:AddTag("Gerp-Remove")
+		Highlight:Destroy()
+	end)
+end
+
+HighlightService.new = function(Highlight : string,Adornee : Instance,Duration)
+	for _, H in Adornee:QueryDescendants("Highlight") do
+		if Highlights:FindFirstChild(H.Name) or H:HasTag("Gerp") then continue end
+		H:Destroy()
+	end
+
+	ConnectionService.Connect("Highlighted",Adornee,Adornee.DescendantAdded,nil,"Connect",function(H)
+		if Highlights:FindFirstChild(H.Name) or H:HasTag("Gerp") then return end
+		if not H:IsA("Highlight") then return end
+		H:Destroy()
+	end)
+
+	Highlight = Highlights:FindFirstChild(Highlight,true):Clone()
+	Highlight:AddTag("Gerp")
+	Highlight.Enabled = true
+
+	Highlight.Parent = Adornee
+	Highlight.Adornee = Adornee
+
+	Highlight.OutlineTransparency = 1
+	Highlight.FillTransparency = 1
+
+	TweenService:Create(Highlight,Fade,{OutlineTransparency = Highlight:GetAttribute("OutlineTransparency") or 1,FillTransparency = Highlight:GetAttribute("FillTransparency") or 1}):Play()
+
+	DelayService.Delay(Highlight,Duration,function()
+		HighlightService.FadeOut(Highlight)
+	end)
+
+	return Highlight
+end
+
+-- [[ SERVICES SYSTEM ]]
+
+local SERVICES = {
+	["M"] = MathService,
+	["CS"] = ConnectionService,
+	["DS"] = DelayService,
+	["OE"] = OnEvent,
+	["HS"] = HighlightService,
+	["S"] = Storage
+}
+
+return SERVICES
